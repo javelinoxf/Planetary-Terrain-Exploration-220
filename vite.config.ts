@@ -8,7 +8,7 @@ const configDir = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(() => {
   return {
-    base: '/',
+    base: '/Planetary-Terrain-Exploration/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
