@@ -20,8 +20,8 @@ interface TopNavBarProps {
   body: PlanetaryBody;
   onSelectBody: (body: PlanetaryBody) => void;
   onGoHome: () => void;
-  viewMode: '2d' | '3d' | 'analog';
-  onChangeViewMode: (mode: '2d' | '3d' | 'analog') => void;
+  viewMode: '2d' | '3d' | 'analog' | 'general';
+  onChangeViewMode: (mode: '2d' | '3d' | 'analog' | 'general') => void;
   basemaps: BasemapSpec[];
   activeBasemapId: string;
   onSelectBasemap: (id: string) => void;
@@ -123,19 +123,22 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
         <select
           aria-label="View mode"
           value={viewMode}
-          onChange={(event) => onChangeViewMode(event.target.value as '2d' | '3d' | 'analog')}
-          className="sm:hidden rounded border border-slate-800 bg-[#060910] px-2 py-1.5 text-xs text-slate-200"
+          onChange={(event) =>
+            onChangeViewMode(event.target.value as '2d' | '3d' | 'analog' | 'general')
+          }
+          className="2xl:hidden rounded border border-slate-800 bg-[#060910] px-2 py-1.5 text-xs text-slate-200"
         >
           <option value="2d">2D Map</option>
           <option value="3d">3D Globe</option>
           <option value="analog">Analog Map</option>
+          <option value="general">General Map</option>
         </select>
 
         {/* 2D Map / 3D Globe Toggle */}
         <div
           role="group"
           aria-label="Explore Mode"
-          className="hidden sm:flex items-center bg-[#060910] border border-slate-800 rounded p-0.5 shrink-0"
+          className="hidden 2xl:flex items-center bg-[#060910] border border-slate-800 rounded p-0.5 shrink-0"
         >
           <button
             type="button"
@@ -173,11 +176,23 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
             <Mountain className="w-3.5 h-3.5" />
             <span>Analog Map</span>
           </button>
+          <button
+            type="button"
+            onClick={() => onChangeViewMode('general')}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-sm transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+              viewMode === 'general'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                : 'text-slate-400 hover:text-slate-200 border border-transparent'
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5" />
+            <span>General Map</span>
+          </button>
         </div>
       </div>
 
       {/* Center: Basemap & Region Explorer */}
-      {viewMode !== 'analog' && <div className="hidden lg:flex items-center gap-2.5 min-w-0">
+      {(viewMode === '2d' || viewMode === '3d') && <div className="hidden 2xl:flex items-center gap-2.5 min-w-0">
         <label className="flex items-center gap-1.5 text-xs text-slate-400 whitespace-nowrap">
           <span>Basemap</span>
           <select
@@ -218,7 +233,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
 
       {/* Right: Map Controls + Inspector Toggle */}
       <div className="flex items-center gap-2 shrink-0">
-        {viewMode !== 'analog' && <>
+        {(viewMode === '2d' || viewMode === '3d') && <>
         <button
           type="button"
           onClick={onToggleGraticule}

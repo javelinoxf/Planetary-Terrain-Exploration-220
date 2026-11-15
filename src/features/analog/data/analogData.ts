@@ -1,6 +1,4 @@
-// Shared field definitions drive CSV parsing and the site data cards.
-export interface AnalogSiteMeasurements {
-  siteId: string;
+export interface AnalogMeasurementValues {
   waterIceM3M3: number | null;
   biologyArray: string[];
   erosionRate: number | null;
@@ -21,8 +19,17 @@ export interface AnalogSiteMeasurements {
   windSpeedMS: number | null;
 }
 
+export interface AnalogSiteMeasurements {
+  siteId: string;
+  planet: AnalogMeasurementValues;
+  earth: AnalogMeasurementValues;
+}
+
+export type AnalogMeasurementValue =
+  AnalogMeasurementValues[keyof AnalogMeasurementValues];
+
 export interface AnalogDataField {
-  key: keyof Omit<AnalogSiteMeasurements, 'siteId'>;
+  key: keyof AnalogMeasurementValues;
   label: string;
   type: string;
   unit?: string;
@@ -93,8 +100,7 @@ export const ANALOG_DATA_SECTIONS: AnalogDataSection[] = [
   },
 ];
 
-const CSV_COLUMNS = [
-  'site_id',
+const CSV_FIELDS = [
   'water_ice_m3_m3',
   'biology_array',
   'erosion_rate',
@@ -114,6 +120,13 @@ const CSV_COLUMNS = [
   'night_temperature_c',
   'wind_speed_m_s',
 ] as const;
+
+const CSV_COLUMNS = [
+  'site_id',
+  ...(['earth', 'planet'] as const).flatMap((source) =>
+    CSV_FIELDS.map((column) => `${source}_${column}`)
+  ),
+];
 
 function parseCsvRows(csv: string): string[][] {
   const rows: string[][] = [];
@@ -180,36 +193,47 @@ function parseBoolean(value: string, field: string): boolean | null {
   throw new Error(`Invalid boolean value in CSV field "${field}"; use true, false, or leave it blank.`);
 }
 
-function parseRow(values: string[], lineNumber: number): AnalogSiteMeasurements {
-  const raw = Object.fromEntries(
-    CSV_COLUMNS.map((column, index) => [column, (values[index] ?? '').trim()])
-  ) as Record<(typeof CSV_COLUMNS)[number], string>;
+function parseMeasurementValues(
+  values: string[],
+  source: 'earth' | 'planet'
+): AnalogMeasurementValues {
+  const offset = source === 'earth' ? 1 : 1 + CSV_FIELDS.length;
+  const value = (column: (typeof CSV_FIELDS)[number]) =>
+    values[offset + CSV_FIELDS.indexOf(column)] ?? '';
+  const arrayValue = value('biology_array');
 
-  const siteId = raw.site_id;
+  return {
+    waterIceM3M3: parseNumber(value('water_ice_m3_m3'), `${source}_water_ice_m3_m3`),
+    biologyArray: arrayValue
+      ? arrayValue.split(';').map((item) => item.trim()).filter(Boolean)
+      : [],
+    erosionRate: parseNumber(value('erosion_rate'), `${source}_erosion_rate`),
+    erosionType: value('erosion_type').trim(),
+    hydrologyMmYear: parseNumber(value('hydrology_mm_year'), `${source}_hydrology_mm_year`),
+    icePresent: parseBoolean(value('ice_present'), `${source}_ice_present`),
+    populationCount: parseInteger(value('population_count'), `${source}_population_count`),
+    buildingsPresent: parseBoolean(value('buildings_present'), `${source}_buildings_present`),
+    illumination: value('illumination').trim(),
+    operations: value('operations').trim(),
+    elevationM: parseNumber(value('elevation_m'), `${source}_elevation_m`),
+    slopeDeg: parseNumber(value('slope_deg'), `${source}_slope_deg`),
+    elevationStddevM: parseNumber(value('elevation_stddev_m'), `${source}_elevation_stddev_m`),
+    reliefType: value('relief_type').trim(),
+    subsurfaceM: parseNumber(value('subsurface_m'), `${source}_subsurface_m`),
+    dayTemperatureC: parseNumber(value('day_temperature_c'), `${source}_day_temperature_c`),
+    nightTemperatureC: parseNumber(value('night_temperature_c'), `${source}_night_temperature_c`),
+    windSpeedMS: parseNumber(value('wind_speed_m_s'), `${source}_wind_speed_m_s`),
+  };
+}
+
+function parseRow(values: string[], lineNumber: number): AnalogSiteMeasurements {
+  const siteId = (values[0] ?? '').trim();
   if (!siteId) throw new Error(`Missing site_id on CSV row ${lineNumber}.`);
 
   return {
     siteId,
-    waterIceM3M3: parseNumber(raw.water_ice_m3_m3, 'water_ice_m3_m3'),
-    biologyArray: raw.biology_array
-      ? raw.biology_array.split(';').map((item) => item.trim()).filter(Boolean)
-      : [],
-    erosionRate: parseNumber(raw.erosion_rate, 'erosion_rate'),
-    erosionType: raw.erosion_type,
-    hydrologyMmYear: parseNumber(raw.hydrology_mm_year, 'hydrology_mm_year'),
-    icePresent: parseBoolean(raw.ice_present, 'ice_present'),
-    populationCount: parseInteger(raw.population_count, 'population_count'),
-    buildingsPresent: parseBoolean(raw.buildings_present, 'buildings_present'),
-    illumination: raw.illumination,
-    operations: raw.operations,
-    elevationM: parseNumber(raw.elevation_m, 'elevation_m'),
-    slopeDeg: parseNumber(raw.slope_deg, 'slope_deg'),
-    elevationStddevM: parseNumber(raw.elevation_stddev_m, 'elevation_stddev_m'),
-    reliefType: raw.relief_type,
-    subsurfaceM: parseNumber(raw.subsurface_m, 'subsurface_m'),
-    dayTemperatureC: parseNumber(raw.day_temperature_c, 'day_temperature_c'),
-    nightTemperatureC: parseNumber(raw.night_temperature_c, 'night_temperature_c'),
-    windSpeedMS: parseNumber(raw.wind_speed_m_s, 'wind_speed_m_s'),
+    earth: parseMeasurementValues(values, 'earth'),
+    planet: parseMeasurementValues(values, 'planet'),
   };
 }
 
@@ -218,8 +242,11 @@ export function parseAnalogDataCsv(csv: string): AnalogSiteMeasurements[] {
   if (rows.length === 0) throw new Error('Analog data CSV is empty.');
 
   const headers = rows[0].map((header) => header.trim().replace(/^\uFEFF/, ''));
-  if (headers.length !== CSV_COLUMNS.length || headers.some((header, index) => header !== CSV_COLUMNS[index])) {
-    throw new Error('Analog data CSV header does not match the documented site-data template.');
+  if (
+    headers.length !== CSV_COLUMNS.length ||
+    headers.some((header, index) => header !== CSV_COLUMNS[index])
+  ) {
+    throw new Error('Analog data CSV header does not match the Earth/planet comparison template.');
   }
 
   const measurements = rows.slice(1).map((row, index) => parseRow(row, index + 2));
@@ -233,7 +260,9 @@ export function parseAnalogDataCsv(csv: string): AnalogSiteMeasurements[] {
   return measurements;
 }
 
-export function formatAnalogDataValue(value: AnalogSiteMeasurements[keyof AnalogSiteMeasurements]): string {
+export function formatAnalogDataValue(
+  value: AnalogMeasurementValue | null | undefined
+): string {
   if (value === null || value === undefined || value === '') return 'Pendiente';
   if (typeof value === 'boolean') return value ? 'Sí' : 'No';
   if (Array.isArray(value)) return value.length > 0 ? value.join(', ') : 'Pendiente';

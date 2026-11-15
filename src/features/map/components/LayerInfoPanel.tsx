@@ -189,7 +189,7 @@ export const LayerInfoPanel: React.FC<LayerInfoPanelProps> = ({
           }`}
         >
           <Crosshair className="w-3.5 h-3.5" />
-          <span>Location Probe</span>
+          <span>Datos del planeta</span>
         </button>
       </div>
 
@@ -392,7 +392,7 @@ export const LayerInfoPanel: React.FC<LayerInfoPanelProps> = ({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-200">
                       <MapPin className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Inspected Surface Location</span>
+                      <span>Datos del planeta</span>
                     </div>
                     <span className="text-[11px] font-mono text-slate-400">
                       {PLANET_METADATA[probe.body].name}
@@ -401,11 +401,11 @@ export const LayerInfoPanel: React.FC<LayerInfoPanelProps> = ({
 
                   <div className="grid grid-cols-1 gap-1.5 text-xs font-mono border-t border-slate-800 pt-2">
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Latitude</span>
+                      <span className="text-slate-400">Latitud</span>
                       <span className="text-slate-100">{formatLat(probe.lat)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Longitude</span>
+                      <span className="text-slate-400">Longitud</span>
                       <span className="text-slate-100">{formatLon(probe.lon)}</span>
                     </div>
                   </div>
@@ -414,10 +414,10 @@ export const LayerInfoPanel: React.FC<LayerInfoPanelProps> = ({
                 {/* Live Elevation Readout */}
                 <div className="p-3 bg-[#0F1522] border border-slate-800 rounded space-y-1.5">
                   <div className="text-[11px] text-slate-400">
-                    Elevation ({PLANET_METADATA[probe.body].elevationDatum})
+                    Elevación ({PLANET_METADATA[probe.body].elevationDatum})
                   </div>
                   {probe.elevationLoading ? (
-                    <div className="text-sm font-mono text-cyan-400">Querying NASA DEM...</div>
+                    <div className="text-sm font-mono text-cyan-400">Consultando modelo de elevación NASA...</div>
                   ) : probe.elevationError ? (
                     <div className="space-y-2">
                       <div className="text-xs text-amber-400">{probe.elevationError}</div>
@@ -426,7 +426,7 @@ export const LayerInfoPanel: React.FC<LayerInfoPanelProps> = ({
                         onClick={onRetryElevation}
                         className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200 hover:bg-amber-500/20"
                       >
-                        Retry NASA DEM query
+                        Reintentar consulta NASA DEM
                       </button>
                     </div>
                   ) : probe.elevationM !== null ? (
@@ -437,7 +437,7 @@ export const LayerInfoPanel: React.FC<LayerInfoPanelProps> = ({
                       <span className="text-xs font-mono text-slate-400">m</span>
                     </div>
                   ) : (
-                    <div className="text-xs text-slate-400">NoData at coordinate</div>
+                    <div className="text-xs text-slate-400">Sin datos en esta coordenada</div>
                   )}
                   <div className="text-[10px] text-slate-500">{probe.elevationSource}</div>
                 </div>

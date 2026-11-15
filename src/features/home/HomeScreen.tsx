@@ -1,11 +1,13 @@
-import { ArrowRight, Globe2, Layers3, Mountain } from 'lucide-react';
+import { ArrowRight, Globe2, Layers3, Map, Mountain } from 'lucide-react';
+import type { PlanetaryBody } from '@/types/planetary';
 
 interface HomeScreenProps {
   onOpenAnalogMap: () => void;
   onOpenGeneralMap: () => void;
+  onOpenPlanetMap: (body: PlanetaryBody) => void;
 }
 
-export function HomeScreen({ onOpenAnalogMap, onOpenGeneralMap }: HomeScreenProps) {
+export function HomeScreen({ onOpenAnalogMap, onOpenGeneralMap, onOpenPlanetMap }: HomeScreenProps) {
   return (
     <main className="flex h-screen w-screen items-center justify-center overflow-y-auto bg-[#07090E] px-5 py-10 text-slate-100">
       <div className="w-full max-w-5xl">
@@ -62,15 +64,41 @@ export function HomeScreen({ onOpenAnalogMap, onOpenGeneralMap }: HomeScreenProp
             </span>
             <h2 className="mt-8 text-xl font-semibold">General Map</h2>
             <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-400">
-              Explore the global 2D map, switch to the interactive 3D globe, and enable planetary
-              layers when needed.
+              Generate a 3D terrain map for saved or custom coordinates with independent zoom and
+              vertical-scale controls.
             </p>
             <span className="mt-auto flex items-center gap-2 pt-6 text-sm font-medium text-slate-200">
-              Open 2D Map
+              Open General Map
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </span>
           </button>
         </div>
+
+        <section className="mt-6">
+          <h2 className="mb-3 text-center text-sm font-semibold text-slate-300">Mapas planetarios</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {([
+              { body: 'moon', name: 'Mapa de la Luna', detail: 'Explora el mapa global lunar en 2D.' },
+              { body: 'mars', name: 'Mapa de Marte', detail: 'Explora el mapa global marciano en 2D.' },
+            ] as const).map(({ body, name, detail }) => (
+              <button
+                key={body}
+                type="button"
+                onClick={() => onOpenPlanetMap(body)}
+                className="flex items-center gap-3 rounded-lg border border-slate-800 bg-[#0A0E17] p-4 text-left transition hover:border-cyan-500/50 hover:bg-[#0D121D]"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-cyan-500/20 bg-cyan-500/10">
+                  <Map className="h-5 w-5 text-cyan-300" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-slate-100">{name}</span>
+                  <span className="mt-0.5 block text-xs text-slate-400">{detail}</span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-cyan-300" />
+              </button>
+            ))}
+          </div>
+        </section>
 
         <p className="mt-6 text-center text-[11px] text-slate-600">
           Planetary sites reuse the existing region presets. Earth analog locations are configured

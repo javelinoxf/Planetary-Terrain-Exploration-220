@@ -8,6 +8,11 @@ import { TopNavBar } from '@/features/map/components/TopNavBar';
 import { TerrainAnalogViewer } from '@/features/analog/components/TerrainAnalogViewer';
 import { ANALOG_SITE_TEMPLATES } from '@/features/analog/data/analogSites';
 import {
+  parseAnalogDataCsv,
+  type AnalogSiteMeasurements,
+} from '@/features/analog/data/analogData';
+import { GeneralMapWorkspace } from '@/features/general/GeneralMapWorkspace';
+import {
   BASEMAPS,
   PLANETARY_LAYERS,
   PLANET_METADATA,
@@ -108,8 +113,15 @@ function minDistanceToFeatureKm(
 
 export default function App() {
   const [body, setBody] = useState<PlanetaryBody>('moon');
-  const [viewMode, setViewMode] = useState<'home' | '2d' | '3d' | 'analog'>('home');
+  const [viewMode, setViewMode] = useState<'home' | '2d' | '3d' | 'analog' | 'general'>('home');
   const [selectedAnalogSiteId, setSelectedAnalogSiteId] = useState('moon-analog-1');
+  const [siteMeasurementsByBody, setSiteMeasurementsByBody] = useState<
+    Partial<Record<PlanetaryBody, Record<string, AnalogSiteMeasurements>>>
+  >({});
+  const [analogDataErrors, setAnalogDataErrors] = useState<
+    Partial<Record<PlanetaryBody, string>>
+  >({});
+  const [analogDataLoading, setAnalogDataLoading] = useState(true);
 
   const [basemapByBody, setBasemapByBody] = useState<Record<PlanetaryBody, string>>({
     moon: 'moon-wac',
@@ -141,6 +153,60 @@ export default function App() {
   const [vectorErrors, setVectorErrors] = useState<Record<string, string>>({});
   const [vectorRetryNonce, setVectorRetryNonce] = useState<Record<string, number>>({});
   const vectorFetchedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const bodies: PlanetaryBody[] = ['moon', 'mars'];
+    setAnalogDataLoading(true);
+
+    Promise.all(
+      bodies.map(async (dataBody) => {
+        try {
+          const response = await fetch(
+            `${import.meta.env.BASE_URL}data/analog-${dataBody}-data.csv`,
+            { signal: controller.signal }
+          );
+          if (!response.ok) {
+            throw new Error(`Analog data CSV returned HTTP ${response.status}`);
+          }
+          const rows = parseAnalogDataCsv(await response.text());
+          const validSiteIds = new Set(
+            ANALOG_SITE_TEMPLATES.filter((site) => site.body === dataBody).map((site) => site.id)
+          );
+          const unknownSite = rows.find((row) => !validSiteIds.has(row.siteId));
+          if (unknownSite) {
+            throw new Error(`Unknown site_id "${unknownSite.siteId}" in ${dataBody} data CSV.`);
+          }
+          return {
+            body: dataBody,
+            measurements: Object.fromEntries(rows.map((row) => [row.siteId, row])),
+            error: null,
+          };
+        } catch (cause) {
+          if (controller.signal.aborted) return null;
+          return {
+            body: dataBody,
+            measurements: {},
+            error: cause instanceof Error ? cause.message : 'Unable to load analog data CSV.',
+          };
+        }
+      })
+    ).then((results) => {
+      if (controller.signal.aborted) return;
+      const measurements: Partial<Record<PlanetaryBody, Record<string, AnalogSiteMeasurements>>> = {};
+      const errors: Partial<Record<PlanetaryBody, string>> = {};
+      for (const result of results) {
+        if (!result) continue;
+        if (result.error) errors[result.body] = result.error;
+        else measurements[result.body] = result.measurements;
+      }
+      setSiteMeasurementsByBody(measurements);
+      setAnalogDataErrors(errors);
+      setAnalogDataLoading(false);
+    });
+
+    return () => controller.abort();
+  }, []);
 
   const [probe, setProbe] = useState<LocationProbeResult | null>(null);
   const elevationRequestRef = useRef<AbortController | null>(null);
@@ -364,17 +430,27 @@ export default function App() {
   }, []);
 
   const handleOpenGeneralMap = useCallback(() => {
+    setViewMode('general');
+  }, []);
+
+  const handleOpenPlanetMap = useCallback((targetBody: PlanetaryBody) => {
+    elevationRequestRef.current?.abort();
+    elevationRequestRef.current = null;
+    handleSelectBody(targetBody);
+    setProbe(null);
+    setProfileMode(false);
+    setProfileSegment(null);
+    setProfilePoints([]);
+    setProfileError(null);
+    const meta = PLANET_METADATA[targetBody];
+    setFlyToTarget({
+      lat: meta.defaultCenter[1],
+      lon: meta.defaultCenter[0],
+      zoom: meta.defaultZoom,
+      nonce: Date.now(),
+    });
     setViewMode('2d');
-    const site = ANALOG_SITE_TEMPLATES.find((template) => template.id === selectedAnalogSiteId);
-    if (site) {
-      setFlyToTarget({
-        lat: site.region.lat,
-        lon: site.region.lon,
-        zoom: site.region.zoom,
-        nonce: Date.now(),
-      });
-    }
-  }, [selectedAnalogSiteId]);
+  }, [handleSelectBody]);
 
   const handleResetView = useCallback(() => {
     const meta = PLANET_METADATA[body];
@@ -578,6 +654,7 @@ export default function App() {
       <HomeScreen
         onOpenAnalogMap={() => setViewMode('analog')}
         onOpenGeneralMap={handleOpenGeneralMap}
+        onOpenPlanetMap={handleOpenPlanetMap}
       />
     );
   }
@@ -625,7 +702,7 @@ export default function App() {
       />
 
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        {leftOpen && viewMode !== 'analog' && (
+        {leftOpen && (viewMode === '2d' || viewMode === '3d') && (
           <LayerSidebar
             body={body}
             layers={planetLayers}
@@ -655,8 +732,13 @@ export default function App() {
               <TerrainAnalogViewer
                 body={body}
                 selectedSiteId={selectedAnalogSiteId}
+                siteMeasurements={siteMeasurementsByBody[body] ?? {}}
+                dataLoading={analogDataLoading}
+                dataError={analogDataErrors[body] ?? null}
                 onSelectSite={handleSelectAnalogSite}
               />
+          ) : viewMode === 'general' ? (
+            <GeneralMapWorkspace body={body} regions={planetRegions} />
           ) : viewMode === '2d' ? (
             <PlanetaryMap2D
               body={body}
@@ -691,7 +773,7 @@ export default function App() {
           )}
         </main>
 
-        {rightOpen && viewMode !== 'analog' && (
+        {rightOpen && (viewMode === '2d' || viewMode === '3d') && (
           <LayerInfoPanel
             activeTab={rightTab}
             onChangeTab={setRightTab}

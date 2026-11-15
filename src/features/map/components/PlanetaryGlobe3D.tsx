@@ -244,8 +244,6 @@ export const PlanetaryGlobe3D: React.FC<PlanetaryGlobe3DProps> = ({
   onSelectLocationRef.current = onSelectLocation;
   const onSelectFeaturedRegionRef = useRef(onSelectFeaturedRegion);
   onSelectFeaturedRegionRef.current = onSelectFeaturedRegion;
-  const featuredRegionsRef = useRef(featuredRegions);
-  featuredRegionsRef.current = featuredRegions;
 
   const [sunAzimuth, setSunAzimuth] = useState(45);
   const [autoSpin, setAutoSpin] = useState(false);
@@ -533,17 +531,6 @@ export const PlanetaryGlobe3D: React.FC<PlanetaryGlobe3DProps> = ({
           return;
         }
         const { lat, lon } = vector3ToLatLon(hits[0].point);
-        const hitDirection = hits[0].point.clone().normalize();
-        const nearestRegion = featuredRegionsRef.current
-          .map((region) => ({
-            region,
-            angle: hitDirection.angleTo(latLonToVector3(region.lat, region.lon, 1)),
-          }))
-          .sort((a, b) => a.angle - b.angle)[0];
-        if (nearestRegion && nearestRegion.angle <= THREE.MathUtils.degToRad(1.5)) {
-          onSelectFeaturedRegionRef.current(nearestRegion.region);
-          return;
-        }
         onSelectLocationRef.current(lat, lon);
       }
     };

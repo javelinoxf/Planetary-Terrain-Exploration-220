@@ -4,7 +4,6 @@ import { ANALOG_SITE_TEMPLATES } from '@/features/analog/data/analogSites';
 import {
   ANALOG_DATA_SECTIONS,
   formatAnalogDataValue,
-  parseAnalogDataCsv,
   type AnalogSiteMeasurements,
 } from '@/features/analog/data/analogData';
 import { PlanetaryDemModel } from './PlanetaryDemModel';
@@ -13,52 +12,26 @@ import type { PlanetaryBody } from '@/types/planetary';
 interface TerrainAnalogViewerProps {
   body: PlanetaryBody;
   selectedSiteId: string;
+  siteMeasurements: Record<string, AnalogSiteMeasurements>;
+  dataLoading: boolean;
+  dataError: string | null;
   onSelectSite: (siteId: string, body: PlanetaryBody) => void;
 }
 
 export function TerrainAnalogViewer({
   body,
   selectedSiteId,
+  siteMeasurements,
+  dataLoading,
+  dataError,
   onSelectSite,
 }: TerrainAnalogViewerProps) {
   const [activeTab, setActiveTab] = useState<'data' | 'model'>('data');
-  const [siteMeasurements, setSiteMeasurements] = useState<Record<string, AnalogSiteMeasurements>>({});
-  const [dataError, setDataError] = useState<string | null>(null);
-  const [dataLoading, setDataLoading] = useState(true);
   const selectedSite =
     ANALOG_SITE_TEMPLATES.find((site) => site.id === selectedSiteId) ??
     ANALOG_SITE_TEMPLATES.find((site) => site.body === body) ??
     ANALOG_SITE_TEMPLATES[0];
   const measurements = siteMeasurements[selectedSite.id];
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setDataLoading(true);
-    fetch(`${import.meta.env.BASE_URL}data/analog-site-data.csv`, {
-      signal: controller.signal
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`Analog data CSV returned HTTP ${response.status}`);
-        return response.text();
-      })
-      .then((csv) => {
-        const rows = parseAnalogDataCsv(csv);
-        const validSiteIds = new Set(ANALOG_SITE_TEMPLATES.map((site) => site.id));
-        const unknownSite = rows.find((row) => !validSiteIds.has(row.siteId));
-        if (unknownSite) throw new Error(`Unknown site_id "${unknownSite.siteId}" in analog data CSV.`);
-        setSiteMeasurements(Object.fromEntries(rows.map((row) => [row.siteId, row])));
-        setDataError(null);
-      })
-      .catch((cause: unknown) => {
-        if (controller.signal.aborted) return;
-        setDataError(cause instanceof Error ? cause.message : 'Unable to load the analog data CSV.');
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setDataLoading(false);
-      });
-
-    return () => controller.abort();
-  }, []);
 
   useEffect(() => {
     setActiveTab('data');
@@ -77,8 +50,8 @@ export function TerrainAnalogViewer({
               Planetary site data and terrain
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-slate-400">
-              Choose one of the five sites. Its data is loaded from the CSV template; its coordinates
-              appear on its planetary map, and its terrain can be compared with the configured Earth analog.
+              Choose a site to compare matching Earth and planetary measurements by category. The
+              tables are maintained separately for Mars and the Moon; undocumented values remain pending.
             </p>
           </div>
         </header>
@@ -90,8 +63,9 @@ export function TerrainAnalogViewer({
                 Five selected sites
               </h2>
               <p className="mt-1 text-xs text-slate-500">
-                Add or replace the site definitions in{' '}
-                <code className="font-mono text-slate-300">src/features/analog/data/analogSites.ts</code>.
+                Edit the site definitions in{' '}
+                <code className="font-mono text-slate-300">src/features/analog/data/analogSites.ts</code>{' '}
+                and the corresponding <code className="font-mono text-slate-300">public/data/analog-{body}-data.csv</code>.
               </p>
             </div>
             <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-300">
@@ -164,8 +138,8 @@ export function TerrainAnalogViewer({
             <section aria-label="Datos del sitio" className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs text-slate-400">
-                  Valores pendientes de recopilación. Completa la fila del sitio en{' '}
-                  <code className="font-mono text-slate-300">public/data/analog-site-data.csv</code>.
+                  Los valores se muestran en el mismo orden para Tierra y {body === 'mars' ? 'Marte' : 'la Luna'}.
+                  Completa ambas columnas de la fila en el CSV de este planeta.
                 </p>
                 <span className="rounded border border-slate-700 bg-[#0A0E17] px-2 py-1 text-[10px] font-mono text-slate-400">
                   site_id: {selectedSite.id}
@@ -183,17 +157,25 @@ export function TerrainAnalogViewer({
                     <h3 className="border-b border-slate-800 px-3 py-2 text-xs font-semibold text-slate-200">
                       {section.title}
                     </h3>
+                    <div className="grid grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 px-3 py-2 text-[10px] font-mono text-slate-500">
+                      <span>Medida</span>
+                      <span className="text-right">Tierra</span>
+                      <span className="text-right">{body === 'mars' ? 'Marte' : 'Luna'}</span>
+                    </div>
                     <dl className="divide-y divide-slate-800/70 px-3">
                       {section.fields.map((field) => (
-                        <div key={field.key} className="flex items-start justify-between gap-3 py-2">
+                        <div key={field.key} className="grid grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)] items-start gap-2 py-2">
                           <dt className="text-xs text-slate-400">
                             {field.label}
                             <span className="mt-0.5 block text-[10px] text-slate-600">
                               {field.type}{field.unit ? ` · ${field.unit}` : ''}
                             </span>
                           </dt>
-                          <dd className="max-w-[55%] break-words text-right text-xs font-mono text-slate-200">
-                            {formatAnalogDataValue(measurements?.[field.key] ?? null)}
+                          <dd className="break-words text-right text-xs font-mono text-slate-200">
+                            {formatAnalogDataValue(measurements?.earth[field.key])}
+                          </dd>
+                          <dd className="break-words text-right text-xs font-mono text-slate-200">
+                            {formatAnalogDataValue(measurements?.planet[field.key])}
                           </dd>
                         </div>
                       ))}

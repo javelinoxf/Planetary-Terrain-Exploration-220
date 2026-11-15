@@ -253,6 +253,38 @@ export function PlanetaryDemModel({ region, earthAnalog }: PlanetaryDemModelProp
   return <SiteTerrainModels region={region} earthAnalog={earthAnalog} />;
 }
 
+export function GeneralTerrainModel({
+  body,
+  lat,
+  lon,
+  zoom,
+  verticalScale,
+  locationName,
+  autoGenerate = false,
+}: {
+  body: RegionPreset['body'];
+  lat: number;
+  lon: number;
+  zoom: number;
+  verticalScale: number;
+  locationName: string;
+  autoGenerate?: boolean;
+}) {
+  const source = useMemo<DemSource>(
+    () => ({ kind: 'planetary', id: `general-${body}`, name: locationName, body, lat, lon }),
+    [body, lat, lon, locationName]
+  );
+  return (
+    <TerrainModelPanel
+      source={source}
+      zoom={zoom}
+      verticalScale={verticalScale}
+      height={520}
+      autoGenerate={autoGenerate}
+    />
+  );
+}
+
 interface SiteTerrainModelsProps extends PlanetaryDemModelProps {
   earthAnalog: AnalogSiteTemplate['earthAnalog'];
 }
@@ -261,15 +293,21 @@ function TerrainModelPanel({
   source,
   zoom,
   verticalScale,
+  height = 360,
+  width = 100,
+  autoGenerate = false,
 }: {
   source: DemSource;
   zoom: number;
   verticalScale: number;
+  height?: number;
+  width?: number;
+  autoGenerate?: boolean;
 }) {
   const [dem, setDem] = useState<LoadedDem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [requestNumber, setRequestNumber] = useState(0);
+  const [requestNumber, setRequestNumber] = useState(autoGenerate ? 1 : 0);
 
   useEffect(() => {
     if (requestNumber === 0) return;
@@ -318,7 +356,10 @@ function TerrainModelPanel({
   const isEarth = source.kind === 'earth';
 
   return (
-    <section className="min-w-0 space-y-3 rounded-lg border border-slate-800 bg-[#0A0E17] p-3">
+    <section
+      className="min-w-0 space-y-3 rounded-lg border border-slate-800 bg-[#0A0E17] p-3"
+      style={{ width: `${width}%`, justifySelf: 'center' }}
+    >
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-slate-200">{source.name}</h3>
@@ -346,7 +387,7 @@ function TerrainModelPanel({
 
       {dem ? (
         <div className="overflow-hidden rounded-lg border border-slate-800 bg-[#0A0E17]">
-          <div className="relative h-[360px]">
+          <div className="relative" style={{ height }}>
             <TerrainSurface grid={dem.grid} verticalScale={verticalScale} />
             <div className="pointer-events-none absolute left-3 top-3 rounded border border-slate-700 bg-[#071018]/90 px-2 py-1.5 text-[10px] font-mono text-slate-300">
               {source.name} · {isEarth ? 'Earth Terrarium DEM' : `NASA ${source.body.toUpperCase()} DEM`} · Z{dem.zoom} · tile {dem.tileX},{dem.tileY}
@@ -373,6 +414,10 @@ function TerrainModelPanel({
 function SiteTerrainModels({ region, earthAnalog }: SiteTerrainModelsProps) {
   const [zoom, setZoom] = useState(8);
   const [verticalScale, setVerticalScale] = useState(0.012);
+  const [planetaryMapHeight, setPlanetaryMapHeight] = useState(360);
+  const [earthMapHeight, setEarthMapHeight] = useState(360);
+  const [planetaryMapWidth, setPlanetaryMapWidth] = useState(100);
+  const [earthMapWidth, setEarthMapWidth] = useState(100);
   const planetarySource = useMemo<DemSource>(
     () => ({
       kind: 'planetary',
@@ -428,9 +473,60 @@ function SiteTerrainModels({ region, earthAnalog }: SiteTerrainModelsProps) {
           </label>
         </div>
       </header>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {([
+          {
+            label: `Mapa planetario · ${region.name}`,
+            width: planetaryMapWidth,
+            setWidth: setPlanetaryMapWidth,
+            height: planetaryMapHeight,
+            setHeight: setPlanetaryMapHeight,
+            widthLabel: 'Ancho mapa planetario',
+            heightLabel: 'Altura mapa planetario',
+          },
+          {
+            label: `Mapa Tierra · ${earthAnalog.name}`,
+            width: earthMapWidth,
+            setWidth: setEarthMapWidth,
+            height: earthMapHeight,
+            setHeight: setEarthMapHeight,
+            widthLabel: 'Ancho mapa Tierra',
+            heightLabel: 'Altura mapa Tierra',
+          },
+        ]).map((mapSize) => (
+          <section key={mapSize.label} className="grid gap-3 rounded border border-slate-800 bg-[#0A0E17] p-3 sm:grid-cols-2">
+            <label className="text-[11px] text-slate-400">
+              {mapSize.widthLabel} · {mapSize.width}%
+              <input
+                type="range"
+                min={60}
+                max={100}
+                step={10}
+                value={mapSize.width}
+                onChange={(event) => mapSize.setWidth(Number(event.target.value))}
+                className="gis-slider mt-2 block w-full"
+                aria-label={mapSize.widthLabel}
+              />
+            </label>
+            <label className="text-[11px] text-slate-400">
+              {mapSize.heightLabel} · {mapSize.height} px
+              <input
+                type="range"
+                min={240}
+                max={640}
+                step={40}
+                value={mapSize.height}
+                onChange={(event) => mapSize.setHeight(Number(event.target.value))}
+                className="gis-slider mt-2 block w-full"
+                aria-label={mapSize.heightLabel}
+              />
+            </label>
+          </section>
+        ))}
+      </div>
       <div className="grid gap-3 xl:grid-cols-2">
-        <TerrainModelPanel key={planetarySource.id} source={planetarySource} zoom={zoom} verticalScale={verticalScale} />
-        <TerrainModelPanel key={earthSource.id} source={earthSource} zoom={zoom} verticalScale={verticalScale} />
+        <TerrainModelPanel key={planetarySource.id} source={planetarySource} zoom={zoom} verticalScale={verticalScale} height={planetaryMapHeight} width={planetaryMapWidth} />
+        <TerrainModelPanel key={earthSource.id} source={earthSource} zoom={zoom} verticalScale={verticalScale} height={earthMapHeight} width={earthMapWidth} />
       </div>
       <p className="text-[10px] leading-relaxed text-slate-500">
         Los modelos terrestres usan tiles Terrarium de Terrain Tiles; los de Marte y la Luna usan sus fuentes DEM NASA.
