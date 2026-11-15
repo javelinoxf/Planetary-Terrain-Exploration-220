@@ -1,0 +1,129 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@layer base {
+  :root {
+    --font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-sans);
+    background-color: #07090e;
+    color: #e2e8f0;
+  }
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Scientific dark Leaflet overrides */
+.leaflet-container {
+  background: #04060a !important;
+  font-family: var(--font-sans) !important;
+  cursor: crosshair !important;
+}
+
+.leaflet-container.leaflet-drag-target {
+  cursor: grabbing !important;
+}
+
+.leaflet-control-attribution {
+  background: rgba(7, 9, 14, 0.85) !important;
+  color: #64748b !important;
+  border-top: 1px solid #1e293b !important;
+  border-left: 1px solid #1e293b !important;
+  font-size: 10px !important;
+  padding: 2px 6px !important;
+}
+
+.leaflet-control-attribution a {
+  color: #38bdf8 !important;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: #0c111b !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #1e293b !important;
+  border-radius: 6px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7) !important;
+}
+
+.leaflet-popup-close-button {
+  color: #94a3b8 !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: #f8fafc !important;
+}
+
+.analog-site-label {
+  background: rgba(7, 16, 24, 0.94) !important;
+  border: 1px solid #475569 !important;
+  border-radius: 4px !important;
+  color: #e2e8f0 !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  padding: 2px 5px !important;
+}
+
+.analog-site-label::before {
+  border-top-color: #475569 !important;
+}
+
+/* Crisp custom scrollbars for GIS panels */
+.gis-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.gis-scroll::-webkit-scrollbar-track {
+  background: #0a0e17;
+}
+
+.gis-scroll::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+}
+
+.gis-scroll::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Precision range slider */
+input[type="range"].gis-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: #1e293b;
+  border-radius: 2px;
+  outline: none;
+}
+
+input[type="range"].gis-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: #06b6d4;
+  border: 1px solid #cffafe;
+  cursor: pointer;
+}
+
+input[type="range"].gis-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: #06b6d4;
+  border: 1px solid #cffafe;
+  cursor: pointer;
+}

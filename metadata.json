@@ -1,0 +1,6 @@
+{
+  "name": "Selene & Ares Planetary GIS",
+  "description": "Scientific geospatial layers explorer for the Moon and Mars powered by NASA Trek, LRO LOLA, MGS MOLA, Diviner, Mars Odyssey THEMIS, and USGS Astrogeology datasets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

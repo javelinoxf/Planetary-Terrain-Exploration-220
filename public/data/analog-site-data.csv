@@ -1,0 +1,6 @@
+site_id,water_ice_m3_m3,biology_array,erosion_rate,erosion_type,hydrology_mm_year,ice_present,population_count,buildings_present,illumination,operations,elevation_m,slope_deg,elevation_stddev_m,relief_type,subsurface_m,day_temperature_c,night_temperature_c,wind_speed_m_s
+mars-analog-1,,,,,,,,,,,,,,,,,,
+mars-analog-2,,,,,,,,,,,,,,,,,,
+mars-analog-3,,,,,,,,,,,,,,,,,,
+moon-analog-1,,,,,,,,,,,,,,,,,,
+moon-analog-2,,,,,,,,,,,,,,,,,,
