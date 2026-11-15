@@ -34,7 +34,9 @@ export function TerrainAnalogViewer({
   useEffect(() => {
     const controller = new AbortController();
     setDataLoading(true);
-    fetch('/data/analog-site-data.csv', { signal: controller.signal })
+    fetch(`${import.meta.env.BASE_URL}data/analog-site-data.csv`, {
+      signal: controller.signal
+    })
       .then(async (response) => {
         if (!response.ok) throw new Error(`Analog data CSV returned HTTP ${response.status}`);
         return response.text();
